@@ -125,9 +125,10 @@ def client_handshake(
         except socket.timeout as e:
             status = 0
             log.warning(e)
-        except ConnectionResetError:
+        except ConnectionResetError as e:
             status = 0
-            time.sleep(0.4)
+            log.error(e)
+            time.sleep(1)
     sock.close()
     return addr
 
