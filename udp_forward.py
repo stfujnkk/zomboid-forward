@@ -34,7 +34,9 @@ class Pipeline:
         try:
             while not self.stop_event.is_set():
                 try:
+                    errno = 1
                     data, addr1 = point1.sock.recvfrom(1024)
+                    errno = 2
                     log.debug(f'from: {addr1}')
                     log.debug(data)
                     point1.addr = addr1
@@ -43,12 +45,18 @@ class Pipeline:
                             f'The data from {addr1} was ignored because the destination address is empty'
                         )
                         continue
+                    errno = 3
                     point2.sock.sendto(data, point2.addr)
+                    errno = 4
                 except BlockingIOError:
                     time.sleep(0.4)
                     continue
                 except Exception as e:
-                    log.error(e)
+                    log.error(f'errno {errno}:{e.__class__}:{e}')
+                    if errno == 1:
+                        point1.addr = None
+                    elif errno == 3:
+                        point2.addr = None
                 pass
         finally:
             self.stop_event.set()
