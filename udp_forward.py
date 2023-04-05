@@ -112,7 +112,7 @@ def client_handshake(
     sock.settimeout(timeout)
     addr = (host, port)
     status = 0
-    while status < 2 and not stop_event.is_set():
+    while status < 2 and (not stop_event or not stop_event.is_set()):
         try:
             sock.sendto(secret_signal[status], addr)
             status = 1
