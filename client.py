@@ -7,12 +7,13 @@ import time
 import logging
 
 
-def main(conf, log, stop_event=None):
+def main(conf, log: logging.Logger, stop_event=None):
     port = int(conf['client']['port'])
     transit_port = int(conf['server']['transit_port'])
     host = conf['server']['host']
 
-    three_messages_handshake(host, transit_port, False, 2, log)
+    addr = three_messages_handshake(host, transit_port, False, 2, log)
+    log.info(f'Successfully connected: {addr}')
 
     pp = Pipeline(0, 0)
     if stop_event:
@@ -23,7 +24,7 @@ def main(conf, log, stop_event=None):
     pp.end_point2.addr = (host, transit_port)
 
     t = threading.Thread(target=pp.run, daemon=True)
-    log.info('Client started successfully')
+    log.info(f'Client started successfully')
     t.start()
     while t.is_alive():
         time.sleep(0.4)
@@ -40,4 +41,5 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         conf_path = sys.argv[1]
     conf.read(conf_path)
+    logging.basicConfig(level=logging.INFO)
     main(conf, logging.getLogger())

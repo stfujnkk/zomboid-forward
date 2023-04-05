@@ -42,7 +42,8 @@ Lightweight UDP forwarding service that can be used for forwarding Project Zombo
   ```bash
   ubuntu@VM-4-13-ubuntu:~/zomboid-forward$ tail -f forward.log
   nohup: ignoring input
-  The data from ('117.136.113.171', 44133) was ignored because the destination address is empty
+  INFO:root:Port forwarding service is starting
+  INFO:root:Successfully connected: ('127.0.0.1', 50073)
   ```
 ## Launch the client
 

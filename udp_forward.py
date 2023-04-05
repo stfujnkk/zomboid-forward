@@ -154,7 +154,7 @@ def server_handshake(host: str, port: int, timeout: float):
                     continue
                 if data != secret_signal[status]:
                     status = 0
-                    break
+                break
         except socket.timeout:
             status = 0
         pass
