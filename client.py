@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*
 
-from udp_forward import Pipeline
-import threading, time
+from udp_forward import Pipeline, three_messages_handshake
+import threading
+import time
 import logging
-import configparser
 
-log = logging.getLogger()
-conf = configparser.ConfigParser()
-log = logging.getLogger()
-conf.read('forward.ini')
 
-if __name__ == '__main__':
-    pp = Pipeline(0, 0)
-
+def main(conf, log, stop_event=None):
     port = int(conf['client']['port'])
     transit_port = int(conf['server']['transit_port'])
     host = conf['server']['host']
 
+    three_messages_handshake(host, transit_port, False, 2, log)
+
+    pp = Pipeline(0, 0)
+    if stop_event:
+        pp.stop_event = stop_event
+    Pipeline.log = log
+
     pp.end_point1.addr = ('127.0.0.1', port)
     pp.end_point2.addr = (host, transit_port)
-    pp.end_point2.sock.sendto(b'hello', pp.end_point2.addr)
 
     t = threading.Thread(target=pp.run, daemon=True)
     log.info('Client started successfully')
@@ -28,3 +28,16 @@ if __name__ == '__main__':
     while t.is_alive():
         time.sleep(0.4)
         pass
+
+
+if __name__ == '__main__':
+    import os
+    import configparser
+    import sys
+    os.chdir(os.path.dirname(__file__))
+    conf = configparser.ConfigParser()
+    conf_path = 'forward.ini'
+    if len(sys.argv) == 2:
+        conf_path = sys.argv[1]
+    conf.read(conf_path)
+    main(conf, logging.getLogger())

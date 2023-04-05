@@ -4,8 +4,6 @@ import typing
 import logging
 import time
 
-log = logging.getLogger()
-
 
 class UdpEndPoint:
 
@@ -20,6 +18,7 @@ class UdpEndPoint:
 
 
 class Pipeline:
+    log = logging.getLogger()
 
     def __init__(self, port1, port2) -> None:
         self.end_point1 = UdpEndPoint(port1)
@@ -37,11 +36,11 @@ class Pipeline:
                     errno = 1
                     data, addr1 = point1.sock.recvfrom(1024)
                     errno = 2
-                    log.debug(f'from: {addr1}')
-                    log.debug(data)
+                    Pipeline.log.debug(f'from: {addr1}')
+                    Pipeline.log.debug(data)
                     point1.addr = addr1
                     if point2.addr is None:
-                        log.warning(
+                        Pipeline.log.warning(
                             f'The data from {addr1} was ignored because the destination address is empty'
                         )
                         continue
@@ -52,7 +51,7 @@ class Pipeline:
                     time.sleep(0.4)
                     continue
                 except Exception as e:
-                    log.error(f'errno {errno}:{e.__class__}:{e}')
+                    Pipeline.log.error(f'errno {errno}:{e.__class__}:{e}')
                     if errno == 1:
                         point1.addr = None
                     elif errno == 3:
@@ -80,3 +79,84 @@ class Pipeline:
         pass
 
     pass
+
+
+secret_signal = [
+    '宫廷玉液酒'.encode('utf8'),
+    '一百八一杯'.encode('utf8'),
+    '这酒怎么样'.encode('utf8'),
+]
+
+
+def three_messages_handshake(
+    host: str,
+    port: int,
+    is_server: bool,
+    timeout: float,
+    log: logging.Logger,
+):
+    if is_server:
+        return server_handshake(host, port, timeout)
+    return client_handshake(host, port, timeout, log)
+
+
+def client_handshake(
+    host: str,
+    port: int,
+    timeout: float,
+    log: logging.Logger,
+):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(timeout)
+    addr = (host, port)
+    status = 0
+    while status < 2:
+        try:
+            sock.sendto(secret_signal[status], addr)
+            status = 1
+            data, _ = sock.recvfrom(15)
+            if data != secret_signal[status]:
+                status = 0
+                continue
+            status = 2
+            sock.sendto(secret_signal[status], addr)
+        except socket.timeout as e:
+            status = 0
+            log.warning(e)
+    sock.close()
+    return addr
+
+
+def server_handshake(host: str, port: int, timeout: float):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((host, port))
+    client = None
+    status = 0
+    while status < 2:
+        sock.settimeout(None)
+        data, client = sock.recvfrom(15)
+        if data != secret_signal[status]:
+            status = 0
+            continue
+        status = 1
+        sock.sendto(secret_signal[status], client)
+        status = 2
+        t = timeout
+        try:
+            while True:
+                if t <= 0:
+                    raise socket.timeout()
+                sock.settimeout(t)
+                start = time.time()
+                data, client2 = sock.recvfrom(15)
+                t -= (time.time() - start)
+                if client2 != client:
+                    continue
+                if data != secret_signal[status]:
+                    status = 0
+                    break
+        except socket.timeout:
+            status = 0
+        pass
+    sock.close()
+    return client
