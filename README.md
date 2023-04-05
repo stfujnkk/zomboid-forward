@@ -34,7 +34,7 @@ Lightweight UDP forwarding service that can be used for forwarding Project Zombo
 - run
 
   ```bash
-  nohup python3 server.py >> forward.log 2>&1 &
+  nohup python3 ./server.py >> forward.log 2>&1 &
   ```
 
   When running the `tail -f forward.log` command to monitor the logs, the following information will be displayed upon client connection:
