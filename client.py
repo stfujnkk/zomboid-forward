@@ -12,7 +12,14 @@ def main(conf, log: logging.Logger, stop_event=None):
     transit_port = int(conf['server']['transit_port'])
     host = conf['server']['host']
 
-    addr = three_messages_handshake(host, transit_port, False, 2, log)
+    addr = three_messages_handshake(
+        host,
+        transit_port,
+        False,
+        2,
+        log,
+        stop_event=stop_event,
+    )
     log.info(f'Successfully connected: {addr}')
 
     pp = Pipeline(0, 0)

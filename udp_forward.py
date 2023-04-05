@@ -94,10 +94,11 @@ def three_messages_handshake(
     is_server: bool,
     timeout: float,
     log: logging.Logger,
+    stop_event: threading.Event = None,
 ):
     if is_server:
         return server_handshake(host, port, timeout)
-    return client_handshake(host, port, timeout, log)
+    return client_handshake(host, port, timeout, log, stop_event)
 
 
 def client_handshake(
@@ -105,12 +106,13 @@ def client_handshake(
     port: int,
     timeout: float,
     log: logging.Logger,
+    stop_event: threading.Event,
 ):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(timeout)
     addr = (host, port)
     status = 0
-    while status < 2:
+    while status < 2 and not stop_event.is_set():
         try:
             sock.sendto(secret_signal[status], addr)
             status = 1
@@ -123,6 +125,9 @@ def client_handshake(
         except socket.timeout as e:
             status = 0
             log.warning(e)
+        except ConnectionResetError:
+            status = 0
+            time.sleep(0.4)
     sock.close()
     return addr
 
