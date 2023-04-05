@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*
 
-from udp_forward import Pipeline, three_messages_handshake
+from udp_forward import Pipeline
 import threading
 import time
 import logging
@@ -13,12 +13,7 @@ def main(conf, log: logging.Logger):
     transit_port = int(conf['server']['transit_port'])
     port = int(conf['server']['port'])
 
-    client = three_messages_handshake('0.0.0.0', transit_port, True, 6, log)
-
-    log.info(f'Successfully connected: {client}')
-
     pp = Pipeline(transit_port, port)
-    pp.end_point1.addr = client
     Pipeline.log = log
     t = threading.Thread(target=pp.run, daemon=True)
 
