@@ -40,5 +40,5 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         conf_path = sys.argv[1]
     conf.read(conf_path)
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     main(conf, logging.getLogger())

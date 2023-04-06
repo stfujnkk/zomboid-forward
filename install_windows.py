@@ -8,10 +8,10 @@ import threading
 import configparser
 
 
-class PythonService(win32serviceutil.ServiceFramework):
-    _svc_name_ = "PythonService"  #服务名
-    _svc_display_name_ = "Python Service Test"  #服务在windows系统中显示的名称
-    _svc_description_ = "这是一段python服务代码 "  #服务描述
+class ZomboidForwardClient(win32serviceutil.ServiceFramework):
+    _svc_name_ = "ZomboidForwardClient"
+    _svc_display_name_ = "ZomboidForwardClient"
+    _svc_description_ = "Lightweight UDP forwarding service that can be used for forwarding Project Zomboid game servers"
 
     def __init__(self, args):
         win32serviceutil.ServiceFramework.__init__(self, args)
@@ -49,4 +49,4 @@ class PythonService(win32serviceutil.ServiceFramework):
 
 
 if __name__ == '__main__':
-    win32serviceutil.HandleCommandLine(PythonService)
+    win32serviceutil.HandleCommandLine(ZomboidForwardClient)

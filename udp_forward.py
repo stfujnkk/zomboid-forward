@@ -36,12 +36,16 @@ class Pipeline:
                 try:
                     errno = 1
                     data, addr1 = point1.sock.recvfrom(1024)
-                    if data == Pipeline.EMPTY_DATA:
-                        continue
                     errno = 2
+
                     Pipeline.log.debug(f'from: {addr1}')
                     Pipeline.log.debug(data)
                     point1.addr = addr1
+
+                    if data == Pipeline.EMPTY_DATA:
+                        Pipeline.log.info(f'Successfully connected: {addr1}')
+                        continue
+
                     if point2.addr is None:
                         Pipeline.log.warning(
                             f'The data from {addr1} was ignored because the destination address is empty'

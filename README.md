@@ -43,7 +43,7 @@ Lightweight UDP forwarding service that can be used for forwarding Project Zombo
   ubuntu@VM-4-13-ubuntu:~/zomboid-forward$ tail -f forward.log
   nohup: ignoring input
   INFO:root:Port forwarding service is starting
-  INFO:root:Successfully connected: ('127.0.0.1', 50073)
+  INFO:root:Successfully connected: ('117.136.113.171', 17761)
   ```
 ## Launch the client
 
