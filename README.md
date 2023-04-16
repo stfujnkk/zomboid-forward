@@ -13,7 +13,7 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
 
   
 
-- Modify Configuration
+- Modify [Configuration](./server.ini)
 
   Server Configuration Example
 
@@ -71,7 +71,7 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
 
   Installing the client is the same as installing the server
 
-- Modify Configuration
+- Modify [Configuration](./client.ini)
 
   ```ini
   [common]
