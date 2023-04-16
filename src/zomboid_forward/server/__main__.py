@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*
+
+from zomboid_forward.libs import UDPForwardServer
+from zomboid_forward.utils import init_log, load_config, get_absolute_path
+from zomboid_forward import __version__
+import os
+
+
+def main(config_path='server.ini'):
+    config = load_config(config_path)
+    server = UDPForwardServer(config)
+    init_log(
+        config['common'].get('log_file'),
+        config['common'].get('log_level'),
+    )
+    server.serve_forever()
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(
+        description=f'Zomboid Forward Server {__version__}')
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="configuration file path",
+        default='server.ini',
+    )
+    args = parser.parse_args()
+    config_path = get_absolute_path(args.config, os.getcwd())
+    main(config_path)

@@ -49,7 +49,7 @@ class UdpServer:
                 self.last_sent_addr = addr
 
     def run(self):
-        threading.Thread(target=self.keep_alive, daemon=True).start()
+        # threading.Thread(target=self.keep_alive, daemon=True).start()
         cur_cid = 0
         try:
 

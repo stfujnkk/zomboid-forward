@@ -50,6 +50,7 @@ class UdpClient:
 
 
 if __name__ == '__main__':
-    # client = UdpClient(18003, '124.222.127.130')
-    client = UdpClient(16261)
+    client = UdpClient(18361, '192.168.45.154')
+    # client = UdpClient(18361)
+    # client = UdpClient(16261)
     client.run()

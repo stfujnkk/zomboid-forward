@@ -17,6 +17,7 @@ settimeout 可以避免这种情况
 
 
 若是第一次sendto前服务器宕机, recvfrom 会报错`ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。`，否则recvfrom会一直阻塞等待。
+是等待还是报错和连接的是本地还是远程也有关系，连接本地会报错，远程则会等待。
 
 刚刚sendto后的第一个recvfrom,如果没设置超时客户端可能会过一会继续执行下面代码，其他recvfrom依然阻塞
 
