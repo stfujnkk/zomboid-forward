@@ -213,7 +213,7 @@ class UDPForwardClient:
         del conf['common']['token']
         self.stop = False
 
-    def _connect(self):
+    def _connect(self, timeout: float):
         self.log.info('Attempting to connect ...')
         tcp_pipeline = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -228,29 +228,44 @@ class UDPForwardClient:
                     EMPTY_ADDR,
                     decrypt_token(self._token, pkg[-1]),
                 ))
+            conf = self.conf.copy()
+            conf.pop('common', None)
             tcp_pipeline.sendall(
                 pack(
                     EMPTY_ADDR,
                     EMPTY_ADDR,
-                    json.dumps(self.conf).encode(),
+                    json.dumps(conf).encode(),
                 ))
             self.log.info(
                 f'Successfully connected to server:{self.server_addr}')
-            self.distribute_data(tcp_pipeline, buf)
+            self.distribute_data(
+                pipeline=tcp_pipeline,
+                timeout=timeout,
+                buf=buf,
+            )
         except Exception as e:
             self.log.error(
                 f'Exception connecting to server, caused by {e.__class__}:{e}')
             tcp_pipeline.close()
         pass
 
-    def connect(self):
-        th = threading.Thread(target=self._connect, daemon=True)
+    def connect(self, timeout: float = TIME_OUT):
+        th = threading.Thread(
+            target=self._connect,
+            args=(timeout, ),
+            daemon=True,
+        )
         th.start()
         while th.is_alive() and not self.stop:
             time.sleep(0.4)
         pass
 
-    def distribute_data(self, pipeline: socket.socket, buf=b''):
+    def distribute_data(
+        self,
+        pipeline: socket.socket,
+        timeout: float,
+        buf=b'',
+    ):
         while True:
             data = pipeline.recv(BUFFER_SIZE)
             buf += data
@@ -272,7 +287,7 @@ class UDPForwardClient:
                         socket.AF_INET,
                         socket.SOCK_DGRAM,
                     )
-                    udp_client.settimeout(TIME_OUT)
+                    udp_client.settimeout(timeout)
                     with self._lock:
                         self.udp_client_pool[src_addr] = udp_client
                     # 先发送建立连接
