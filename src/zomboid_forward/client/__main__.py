@@ -30,7 +30,7 @@ if __name__ == '__main__':
         "-t",
         "--timeout",
         type=float,
-        help="Connection survival time when there is no data transmission",
+        help="connection survival time when there is no data transmission",
     )
     args = parser.parse_args()
     config_path = args.config

@@ -156,6 +156,11 @@ class UDPForwardServer:
 
     def _run_server(self):
         self.transit_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.transit_server.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_REUSEADDR,
+            1,
+        )
         self.transit_server.bind(self.transit_addr)
         self.transit_server.listen(1)
         while True:
@@ -169,14 +174,18 @@ class UDPForwardServer:
     def serve_forever(self):
         self.log.info('Waiting for client connection...')
         self.log.info(f'Listening for {self.transit_addr}')
-
-        th = threading.Thread(
-            target=self._run_server,
-            daemon=True,
-        )
-        th.start()
-        while th.is_alive():
-            time.sleep(0.4)
+        try:
+            th = threading.Thread(
+                target=self._run_server,
+                daemon=True,
+            )
+            th.start()
+            while th.is_alive():
+                time.sleep(0.4)
+        finally:
+            if self.transit_server:
+                self.transit_server.close()
+            pass
         pass
 
     pass
