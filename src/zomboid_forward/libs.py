@@ -220,7 +220,7 @@ class UDPForwardClient:
             tcp_pipeline.connect(self.server_addr)
             pkg, buf = recv_pkg(tcp_pipeline)
             if not pkg:
-                self.log.error(
+                raise Exception(
                     f'The service has been shut down: {self.server_addr}')
             tcp_pipeline.sendall(
                 pack(
