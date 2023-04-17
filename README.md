@@ -44,15 +44,14 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
   
   ```ini
   [Unit]
-  Description=Lightweight UDP forwarding service that can be used for forwarding Project Zomboid game servers
+  Description=Zomboid Forward Service
   After=network.target
   
   [Service]
   Type=simple
-  User=nobody
   Restart=on-failure
   RestartSec=5s
-  ExecStart=/usr/bin/python -m zomboid_forward.server
+  ExecStart=python -m zomboid_forward.server
   
   [Install]
   WantedBy=multi-user.target
