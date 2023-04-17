@@ -58,7 +58,8 @@ def unpack(data: bytes) -> typing.Tuple[PKG, int]:
 
 
 def recv_pkg(sock: socket.socket, buf: bytes = b''):
-    data = 1
+    pkg, l = unpack(buf)
+    data, buf = l, buf[l:]
     while data:
         data = sock.recv(BUFFER_SIZE)
         buf += data
@@ -67,7 +68,7 @@ def recv_pkg(sock: socket.socket, buf: bytes = b''):
             continue
         buf = buf[l:]
         return pkg, buf
-    return None, buf
+    return pkg, buf
 
 
 def send_pkg(sock: socket.socket, pkg: PKG, addr: Addr = None):
