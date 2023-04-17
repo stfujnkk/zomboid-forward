@@ -161,9 +161,7 @@ class UDPForwardServer:
                 self.log.debug(
                     f'Start shutting down the service on {sock.getsockname()}')
                 try:
-                    # sock.shutdown(socket.SHUT_RDWR)
-                    # sock.shutdown(socket.SOCK_DGRAM)
-                    sock.shutdown(socket.SHUT_RD)
+                    sock.shutdown(socket.SHUT_RDWR)
                 except Exception as e:
                     # OSError: [Errno 107]
                     self.log.debug(
