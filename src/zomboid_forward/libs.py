@@ -157,7 +157,10 @@ class UDPForwardServer:
         finally:
             transit_client.close()
             for k, v in port_mapping.items():
-                v['server'].close()
+                sock: socket.socket = v['server']
+                self.log.debug(
+                    f'Turn off service with address {sock.getsockname()}')
+                sock.close()
         pass
 
     def _run_server(self):
@@ -308,7 +311,7 @@ class UDPForwardClient:
                     daemon=True,
                 ).start()
             pass
-        self.log.info(f'TCP connection closed:{pipeline.getsockname()}')
+        self.log.info(f'TCP connection closed:{pipeline.getpeername()}')
 
     def push_data(
         self,
