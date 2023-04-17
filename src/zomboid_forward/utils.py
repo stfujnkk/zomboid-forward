@@ -6,6 +6,7 @@ import hashlib
 import secrets
 import os
 import configparser
+import weakref
 from logging.handlers import RotatingFileHandler
 from zomboid_forward.config import (
     ENCRYPTION_SIZE,
@@ -21,6 +22,10 @@ from zomboid_forward.config import (
     ENCODEING,
     BASE_PATH,
 )
+import threading
+
+_socket_state: typing.Dict[socket.socket, dict] = weakref.WeakKeyDictionary()
+_lock_for_socket_state = threading.Lock()
 
 
 def pack(src: Addr, dst: Addr, data: bytes):
@@ -57,21 +62,61 @@ def unpack(data: bytes) -> typing.Tuple[PKG, int]:
     ), pkg_len
 
 
-def recv_pkg(sock: socket.socket, buf: bytes = b''):
-    pkg, l = unpack(buf)
-    data, buf = l, buf[l:]
-    while data:
-        data = sock.recv(BUFFER_SIZE)
-        buf += data
+def get_socket_buf(sock: socket.socket) -> bytes:
+    with _lock_for_socket_state:
+        state = _socket_state.get(sock, {})
+        buf = state['buffer'] = state.get('buffer', b'')
+        _socket_state[sock] = state
+        return buf
+
+
+def set_socket_buf(sock: socket.socket, buf: bytes):
+    with _lock_for_socket_state:
+        state = _socket_state.get(sock, {})
+        state['buffer'] = buf
+        _socket_state[sock] = state
+
+
+def get_socket_lock(
+    sock: socket.socket,
+    lock_type: typing.Literal['read', 'write'],
+) -> threading.Lock:
+    with _lock_for_socket_state:
+        state = _socket_state.get(sock, {})
+        lock = state[lock_type] = state.get(lock_type, threading.Lock())
+        _socket_state[sock] = state
+        return lock
+
+
+def recv_from_pipeline(sock: socket.socket):
+    lock = get_socket_lock(sock, 'read')
+    with lock:
+        buf = get_socket_buf(sock)
         pkg, l = unpack(buf)
-        if l == 0:
-            continue
-        buf = buf[l:]
-        return pkg, buf
-    return pkg, buf
+        data, buf = not l, buf[l:]
+        while data:
+            data = sock.recv(BUFFER_SIZE)
+            buf += data
+            pkg, l = unpack(buf)
+            if l == 0:
+                continue
+            buf = buf[l:]
+            break
+        set_socket_buf(sock, buf)
+        return pkg
+
+
+def send_to_pipeline(sock: socket.socket, src: Addr, dst: Addr, data: bytes):
+    lock = get_socket_lock(sock, 'write')
+    with lock:
+        sock.sendall(pack(src, dst, data))
+    pass
 
 
 def send_pkg(sock: socket.socket, pkg: PKG, addr: Addr = None):
+    """
+    sending udp data,ensure that all data are sent before returning
+    """
     if not sock:
         return
     _, dst, pkg_len, payload = pkg

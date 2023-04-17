@@ -6,19 +6,17 @@ import logging
 import typing
 from zomboid_forward.config import (
     MAX_PACKAGE_SIZE,
-    BUFFER_SIZE,
     TIME_OUT,
     ENCODEING,
     EMPTY_ADDR,
     Addr,
 )
 from zomboid_forward.utils import (
-    pack,
-    unpack,
-    recv_pkg,
     send_pkg,
     encrypt_token,
     decrypt_token,
+    recv_from_pipeline,
+    send_to_pipeline,
 )
 
 
@@ -45,7 +43,12 @@ class UDPForwardServer:
                 try:
                     data, src_addr = udp_server.recvfrom(MAX_PACKAGE_SIZE)
                     self.log.debug(f'{src_addr} >>> {server_addr} {data}')
-                    transit_client.sendall(pack(src_addr, server_addr, data))
+                    send_to_pipeline(
+                        transit_client,
+                        src_addr,
+                        server_addr,
+                        data,
+                    )
                 except Exception as e:
                     if transit_client._closed:
                         return
@@ -71,21 +74,26 @@ class UDPForwardServer:
         try:
             transit_client.settimeout(3)
             t, f1, f2 = encrypt_token(self._token)
-            transit_client.sendall(pack(EMPTY_ADDR, EMPTY_ADDR, f1 + f2))
-            pkg, buf = recv_pkg(transit_client)
+            send_to_pipeline(
+                transit_client,
+                EMPTY_ADDR,
+                EMPTY_ADDR,
+                f1 + f2,
+            )
+            pkg = recv_from_pipeline(transit_client)
             if not pkg or t != pkg[-1]:
                 self.log.debug(f'Client token verification failed:{addr}')
                 transit_client.close()
                 return
             transit_client.settimeout(None)
             self.log.info(f'Successfully connected to client:{addr}')
-            pkg, buf = recv_pkg(transit_client, buf)
+            pkg = recv_from_pipeline(transit_client)
             if not pkg:
                 raise Exception(f'Failed to read client configuration:{addr}')
             threading.Thread(
                 target=self.forwarding_service,
                 daemon=True,
-                args=(transit_client, json.loads(pkg[-1]), addr, buf),
+                args=(transit_client, json.loads(pkg[-1]), addr),
             ).start()
         except Exception as e:
             self.log.error(
@@ -98,7 +106,6 @@ class UDPForwardServer:
         transit_client: socket.socket,
         client_config: dict,
         client_addr: Addr,
-        buf: bytes = b'',
     ):
         port_mapping = {}
         try:
@@ -133,22 +140,15 @@ class UDPForwardServer:
             self.log.info(
                 f'Successfully started related services for the client {client_addr}'
             )
-            while True:
-                data = transit_client.recv(BUFFER_SIZE)
-                buf += data
-                while True:
-                    pkg, l = unpack(buf)
-                    if not l:
-                        break
-                    buf = buf[l:]
-                    src_addr, dst_addr, _, payload = pkg
-                    self.log.debug(f"{dst_addr} <<< {src_addr} {payload}")
-                    server = port_mapping[src_addr[1]]['server']
-                    send_pkg(server, pkg)
-                    pass
-                if not data:
-                    self.log.info(f'Client closed:{client_addr}')
-                    break
+            pkg = 1
+            while pkg:
+                pkg = recv_from_pipeline(transit_client)
+                src_addr, dst_addr, _, payload = pkg
+                self.log.debug(f"{dst_addr} <<< {src_addr} {payload}")
+                server = port_mapping[src_addr[1]]['server']
+                send_pkg(server, pkg)
+                pass
+            self.log.info(f'Client closed:{client_addr}')
         except Exception as e:
             self.log.error(
                 f'The client with address {client_addr} has been forcibly shut down, caused by {e.__class__}:{e}'
@@ -232,30 +232,29 @@ class UDPForwardClient:
         tcp_pipeline = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             tcp_pipeline.connect(self.server_addr)
-            pkg, buf = recv_pkg(tcp_pipeline)
+            pkg = recv_from_pipeline(tcp_pipeline)
             if not pkg:
                 raise Exception(
                     f'The service has been shut down: {self.server_addr}')
-            tcp_pipeline.sendall(
-                pack(
-                    EMPTY_ADDR,
-                    EMPTY_ADDR,
-                    decrypt_token(self._token, pkg[-1]),
-                ))
+            send_to_pipeline(
+                tcp_pipeline,
+                EMPTY_ADDR,
+                EMPTY_ADDR,
+                decrypt_token(self._token, pkg[-1]),
+            )
             conf = self.conf.copy()
             conf.pop('common', None)
-            tcp_pipeline.sendall(
-                pack(
-                    EMPTY_ADDR,
-                    EMPTY_ADDR,
-                    json.dumps(conf).encode(),
-                ))
+            send_to_pipeline(
+                tcp_pipeline,
+                EMPTY_ADDR,
+                EMPTY_ADDR,
+                json.dumps(conf).encode(),
+            )
             self.log.info(
                 f'Successfully connected to server:{self.server_addr}')
             self.distribute_data(
                 pipeline=tcp_pipeline,
                 timeout=timeout,
-                buf=buf,
             )
         except Exception as e:
             self.log.error(
@@ -278,47 +277,36 @@ class UDPForwardClient:
         self,
         pipeline: socket.socket,
         timeout: float,
-        buf=b'',
     ):
-        while True:
-            data = pipeline.recv(BUFFER_SIZE)
-            buf += data
-            while True:
-                pkg, l = unpack(buf)
-                if not l:
-                    break
-                buf = buf[l:]
-                src_addr, dst_addr, _, payload = pkg
-                self.log.debug(f"{src_addr} >>> {dst_addr} {payload}")
-                with self._lock:
-                    udp_client = self.udp_client_pool.get(src_addr)
-                local_addr = self._remote2local[dst_addr[1]]
-                if udp_client:
-                    send_pkg(udp_client, pkg, addr=local_addr)
-                else:
-                    # 开启udp
+        pkg = 1
+        while pkg:
+            pkg = recv_from_pipeline(pipeline)
+            src_addr, dst_addr, _, payload = pkg
+            self.log.debug(f"{src_addr} >>> {dst_addr} {payload}")
+            udp_client, is_new = None, False
+            with self._lock:
+                udp_client = self.udp_client_pool.get(src_addr)
+                if not udp_client:
+                    is_new = True
                     udp_client = socket.socket(
                         socket.AF_INET,
                         socket.SOCK_DGRAM,
                     )
                     udp_client.settimeout(timeout)
-                    with self._lock:
-                        self.udp_client_pool[src_addr] = udp_client
-                    # 先发送建立连接
-                    send_pkg(udp_client, pkg, addr=local_addr)
-                    # TODO use thread pool
-                    threading.Thread(
-                        target=self.push_data,
-                        args=(src_addr, pipeline, udp_client),
-                        daemon=True,
-                    ).start()
+                    self.udp_client_pool[src_addr] = udp_client
+                    pass
                 pass
+            local_addr = self._remote2local[dst_addr[1]]
+            send_pkg(udp_client, pkg, addr=local_addr)
+            if is_new:
+                # TODO use thread pool
+                threading.Thread(
+                    target=self.push_data,
+                    args=(src_addr, pipeline, udp_client),
+                    daemon=True,
+                ).start()
             pass
-            if not data:
-                self.log.info(
-                    f'TCP connection closed:{pipeline.getsockname()}')
-                break
-        pass
+        self.log.info(f'TCP connection closed:{pipeline.getsockname()}')
 
     def push_data(
         self,
@@ -336,7 +324,7 @@ class UDPForwardClient:
                     self._local2remote[(l_ip, l_port)],
                 )
                 self.log.debug(f"{remote_addr} <<< {server_addr} {data}")
-                pipeline.sendall(pack(server_addr, remote_addr, data))
+                send_to_pipeline(pipeline, server_addr, remote_addr, data)
         except socket.timeout:
             self.log.warn(f'{client_name} has timed out')
         except Exception as e:
