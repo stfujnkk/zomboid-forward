@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-l",
         "--level",
-        help="Log Level",
+        help="log level",
     )
     args = parser.parse_args()
     config_path = args.config

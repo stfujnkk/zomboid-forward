@@ -102,6 +102,9 @@ class UDPForwardServer:
     ):
         port_mapping = {}
         try:
+            self.log.info(
+                f'Starting related services for client {client_addr}:{client_config}'
+            )
             for k, v in client_config.items():
                 if k == 'common' or k == 'DEFAULT':
                     continue
@@ -125,8 +128,10 @@ class UDPForwardServer:
                             conf['client'],
                         ),
                     ).start()
-            self.log.debug(
-                f'Successfully loaded client configuration with address {client_addr}:{client_config}'
+                    self.log.debug(
+                        f'Successfully started service on port {remote_port}')
+            self.log.info(
+                f'Successfully started related services for the client {client_addr}'
             )
             while True:
                 data = transit_client.recv(BUFFER_SIZE)
