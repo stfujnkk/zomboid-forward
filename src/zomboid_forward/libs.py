@@ -159,9 +159,14 @@ class UDPForwardServer:
             for k, v in port_mapping.items():
                 sock: socket.socket = v['server']
                 self.log.debug(
-                    f'Turn off service with address {sock.getsockname()}')
-                # sock.shutdown(socket.SHUT_RDWR)
-                # sock.shutdown(socket.SOCK_DGRAM)
+                    f'Start shutting down the service on {sock.getsockname()}')
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                    # sock.shutdown(socket.SOCK_DGRAM)
+                except Exception as e:
+                    # OSError: [Errno 107]
+                    self.log.debug(f'Error closing {sock.getsockname()}:{e.__class__}:{e}')
+                    pass
                 sock.close()
         pass
 
