@@ -64,7 +64,7 @@ class UDPForwardServer:
                     pass
         finally:
             udp_server.close()
-            pass
+            self.log.debug(f"Shutting down {server_name}")
 
     def handle(
         self,
