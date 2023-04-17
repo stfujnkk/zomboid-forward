@@ -1,4 +1,4 @@
-# zomboid-forward
+# Zomboid-Forward
 Lightweight UDP forwarding service that can be used for forwarding [Project Zomboid](https://pzwiki.net/wiki/Main_Page) game servers
 
 ## Start server
