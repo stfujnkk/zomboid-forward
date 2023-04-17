@@ -137,9 +137,9 @@ def load_config(filename: str):
     config.read(config_path, encoding=ENCODEING)
     conf = {s: dict(config.items(s)) for s in config.sections()}
 
-    if 'log_file' in config['common']:
-        config['common']['log_file'] = get_absolute_path(
-            config['common']['log_file'],
+    if 'log_file' in conf['common']:
+        conf['common']['log_file'] = get_absolute_path(
+            conf['common']['log_file'],
             base_path,
         )
     return conf
