@@ -25,8 +25,9 @@ if __name__ == '__main__':
         "-c",
         "--config",
         help="configuration file path",
-        default='client.ini',
     )
     args = parser.parse_args()
-    config_path = get_absolute_path(args.config, os.getcwd())
-    main(config_path)
+    config_path = args.config
+    if config_path:
+        config_path = get_absolute_path(config_path, os.getcwd())
+    main(config_path or 'client.ini')

@@ -64,6 +64,12 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
   chmod 754 /usr/lib/systemd/system/zomboid_forward.service
   systemctl enable zomboid_forward.service
   ```
+  
+  view log
+  
+  ```bash
+  journalctl -r -u zomboid_forward
+  ```
 
 ## Launch the client
 

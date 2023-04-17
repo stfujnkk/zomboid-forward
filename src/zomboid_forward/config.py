@@ -10,7 +10,7 @@ LOG_LEVEL = {
     'critical': logging.CRITICAL,
     None: logging.INFO,
 }
-BASE_PATH = os.path.dirname(__file__)
+BASE_PATH = os.path.join(os.path.expanduser('~'), '.zomboid_forward')
 ENCODEING = 'UTF8'
 MAX_PACKAGE_SIZE = 65535
 IP_HEAD_SIZE = 4

@@ -7,7 +7,7 @@ from zomboid_forward import __version__
 import os
 
 
-def main(config_path='server.ini'):
+def main(config_path):
     config = load_config(config_path)
     server = UDPForwardServer(config)
     init_log(
@@ -25,8 +25,9 @@ if __name__ == '__main__':
         "-c",
         "--config",
         help="configuration file path",
-        default='server.ini',
     )
     args = parser.parse_args()
-    config_path = get_absolute_path(args.config, os.getcwd())
-    main(config_path)
+    config_path = args.config
+    if config_path:
+        config_path = get_absolute_path(config_path, os.getcwd())
+    main(config_path or 'server.ini')
