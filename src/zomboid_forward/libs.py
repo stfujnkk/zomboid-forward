@@ -160,7 +160,8 @@ class UDPForwardServer:
                 sock: socket.socket = v['server']
                 self.log.debug(
                     f'Turn off service with address {sock.getsockname()}')
-                sock.shutdown(socket.SHUT_RDWR)
+                # sock.shutdown(socket.SHUT_RDWR)
+                sock.shutdown(socket.SOCK_DGRAM)
                 sock.close()
         pass
 
