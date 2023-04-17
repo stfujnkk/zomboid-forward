@@ -94,7 +94,7 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
   remote_port = 16261,16262
   ```
 
- Change `server_addr` to your server's IP and ensure that the server and client tokens are the same.
+  Change `server_addr` to your server's IP and ensure that the server and client tokens are the same.
 
 - run
 
