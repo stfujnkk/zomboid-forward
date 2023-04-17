@@ -140,9 +140,10 @@ class UDPForwardServer:
             self.log.info(
                 f'Successfully started related services for the client {client_addr}'
             )
-            pkg = 1
-            while pkg:
+            while True:
                 pkg = recv_from_pipeline(transit_client)
+                if not pkg:
+                    break
                 src_addr, dst_addr, _, payload = pkg
                 self.log.debug(f"{dst_addr} <<< {src_addr} {payload}")
                 server = port_mapping[src_addr[1]]['server']
@@ -278,9 +279,10 @@ class UDPForwardClient:
         pipeline: socket.socket,
         timeout: float,
     ):
-        pkg = 1
-        while pkg:
+        while True:
             pkg = recv_from_pipeline(pipeline)
+            if not pkg:
+                break
             src_addr, dst_addr, _, payload = pkg
             self.log.debug(f"{src_addr} >>> {dst_addr} {payload}")
             udp_client, is_new = None, False
