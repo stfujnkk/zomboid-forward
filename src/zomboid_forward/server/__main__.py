@@ -7,12 +7,12 @@ from zomboid_forward import __version__
 import os
 
 
-def main(config_path):
+def main(config_path, level: str = None):
     config = load_config(config_path)
     server = UDPForwardServer(config)
     init_log(
         config['common'].get('log_file'),
-        config['common'].get('log_level'),
+        level or config['common'].get('log_level'),
     )
     server.serve_forever()
 
@@ -26,8 +26,16 @@ if __name__ == '__main__':
         "--config",
         help="configuration file path",
     )
+    parser.add_argument(
+        "-l",
+        "--level",
+        help="Log Level",
+    )
     args = parser.parse_args()
     config_path = args.config
     if config_path:
         config_path = get_absolute_path(config_path, os.getcwd())
-    main(config_path or 'server.ini')
+    main(
+        config_path or 'server.ini',
+        level=args.level,
+    )

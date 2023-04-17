@@ -7,12 +7,12 @@ from zomboid_forward import __version__
 import os
 
 
-def main(config_path, timeout=None):
+def main(config_path, timeout: float = None, level: str = None):
     config = load_config(config_path)
     client = UDPForwardClient(config)
     init_log(
         config['common'].get('log_file'),
-        config['common'].get('log_level'),
+        level or config['common'].get('log_level'),
     )
     client.connect(timeout=timeout)
 
@@ -32,8 +32,17 @@ if __name__ == '__main__':
         type=float,
         help="connection survival time when there is no data transmission",
     )
+    parser.add_argument(
+        "-l",
+        "--level",
+        help="Log Level",
+    )
     args = parser.parse_args()
     config_path = args.config
     if config_path:
         config_path = get_absolute_path(config_path, os.getcwd())
-    main(config_path or 'client.ini', timeout=args.timeout)
+    main(
+        config_path or 'client.ini',
+        timeout=args.timeout,
+        level=args.level,
+    )
