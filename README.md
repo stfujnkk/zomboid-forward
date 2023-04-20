@@ -1,4 +1,4 @@
-# zomboid-forward
+# Zomboid-Forward
 Lightweight UDP forwarding service that can be used for forwarding [Project Zomboid](https://pzwiki.net/wiki/Main_Page) game servers
 
 ## Start server
@@ -94,7 +94,7 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
   remote_port = 16261,16262
   ```
 
-  Please change `server_addr` to the IP address of the server and ensure that the server and client tokens are the same.
+  Change `server_addr` to your server's IP and ensure that the server and client tokens are the same.
 
 - run
 
