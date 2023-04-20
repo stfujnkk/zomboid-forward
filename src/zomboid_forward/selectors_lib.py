@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, Executor
 import selectors
 import socket
 import struct
+import logging
 
 __author__ = 'stfujnkk'
 BUFFER_SIZE = 0xffff * 2
@@ -98,6 +99,7 @@ class OutputStream:
 
 
 class BaseTCPServer:
+    log = logging.getLogger()
 
     def __init__(self, port: int) -> None:
         super().__init__()
@@ -230,11 +232,14 @@ class BaseTCPServer:
         def _handle_connection():
             try:
                 self.handle_connection(input_stream, output_stream)
-            finally:
                 input_stream.close()
                 output_stream.close()
-                # 这种方式可以避免使用锁
                 key.data['request_close'] = True
+            except Exception as e:
+                BaseTCPServer.log.error(
+                    f"Forced shutdown of client with address {address}, caused by {e.__class__}:{e}"
+                )
+                self.start_close_thread(key, e)
 
         self._executor.submit(_handle_connection)
         pass
