@@ -92,15 +92,15 @@ def recv_from_pipeline(sock: socket.socket):
     lock = get_socket_lock(sock, 'read')
     with lock:
         buf = get_socket_buf(sock)
-        pkg, l = unpack(buf)
-        data, buf = not l, buf[l:]
+        pkg, length = unpack(buf)
+        data, buf = not length, buf[length:]
         while data:
             data = sock.recv(BUFFER_SIZE)
             buf += data
-            pkg, l = unpack(buf)
-            if l == 0:
+            pkg, length = unpack(buf)
+            if length == 0:
                 continue
-            buf = buf[l:]
+            buf = buf[length:]
             break
         set_socket_buf(sock, buf)
         return pkg

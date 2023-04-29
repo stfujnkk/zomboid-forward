@@ -1,0 +1,23 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: local
+  hooks:
+  - id: yapf
+    name: yapf
+    language: python
+    entry: yapf
+    args: [-i, -vv, --style, setup.cfg]
+    files: ^src/.+\.pyi?$
+    additional_dependencies:
+    - yapf
+
+  - id: flake8
+    name: flake8
+    entry: flake8
+    args: [--config, setup.cfg]
+    language: python
+    files: ^src/.+\.pyi?$
+    additional_dependencies:
+    - flake8
+

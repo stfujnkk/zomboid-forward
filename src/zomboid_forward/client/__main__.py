@@ -19,8 +19,7 @@ def main(config_path, timeout: float = None, level: str = None):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(
-        description=f'Zomboid Forward Client {__version__}')
+    parser = argparse.ArgumentParser(description=f'Zomboid Forward Client {__version__}')
     parser.add_argument(
         "-c",
         "--config",
