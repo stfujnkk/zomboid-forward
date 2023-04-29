@@ -54,13 +54,9 @@ class UDPForwardServer:
                         return
                     if isinstance(e, ConnectionResetError):
                         if hasattr(e, 'winerror') and e.winerror == 10054:
-                            self.log.warning(
-                                f'{server_name} sent data to an unreachable address'
-                            )
+                            self.log.warning(f'{server_name} sent data to an unreachable address')
                             continue
-                    self.log.error(
-                        f'{server_name} has been shut down due to {e.__class__}{e}'
-                    )
+                    self.log.error(f'{server_name} has been shut down due to {e.__class__}{e}')
                     pass
         finally:
             udp_server.close()
@@ -96,9 +92,7 @@ class UDPForwardServer:
                 args=(transit_client, json.loads(pkg[-1]), addr),
             ).start()
         except Exception as e:
-            self.log.error(
-                f'Client Address:{addr}:Error initializing service,caused by {e.__class__}:{e}'
-            )
+            self.log.error(f'Client Address:{addr}:Error initializing service,caused by {e.__class__}:{e}')
             transit_client.close()
 
     def forwarding_service(
@@ -109,9 +103,7 @@ class UDPForwardServer:
     ):
         port_mapping = {}
         try:
-            self.log.info(
-                f'Starting related services for client {client_addr}:{client_config}'
-            )
+            self.log.info(f'Starting related services for client {client_addr}:{client_config}')
             for k, v in client_config.items():
                 if k == 'common' or k == 'DEFAULT':
                     continue
@@ -135,11 +127,8 @@ class UDPForwardServer:
                             conf['client'],
                         ),
                     ).start()
-                    self.log.debug(
-                        f'Successfully started service on port {remote_port}')
-            self.log.info(
-                f'Successfully started related services for the client {client_addr}'
-            )
+                    self.log.debug(f'Successfully started service on port {remote_port}')
+            self.log.info(f'Successfully started related services for the client {client_addr}')
             while True:
                 pkg = recv_from_pipeline(transit_client)
                 if not pkg:
@@ -151,22 +140,17 @@ class UDPForwardServer:
                 pass
             self.log.info(f'Client closed:{client_addr}')
         except Exception as e:
-            self.log.error(
-                f'The client with address {client_addr} has been forcibly shut down, caused by {e.__class__}:{e}'
-            )
+            self.log.error(f'The client with address {client_addr} has been forcibly shut down, caused by {e.__class__}:{e}')
         finally:
             transit_client.close()
             for k, v in port_mapping.items():
                 sock: socket.socket = v['server']
-                self.log.debug(
-                    f'Start shutting down the service on {sock.getsockname()}')
+                self.log.debug(f'Start shutting down the service on {sock.getsockname()}')
                 try:
                     sock.shutdown(socket.SHUT_RDWR)
                 except Exception as e:
                     # OSError: [Errno 107]
-                    self.log.debug(
-                        f'Error occurred while closing {sock.getsockname()}, caused by {e.__class__}:{e}'
-                    )
+                    self.log.debug(f'Error occurred while closing {sock.getsockname()}, caused by {e.__class__}:{e}')
                     pass
                 sock.close()
         pass
@@ -246,8 +230,7 @@ class UDPForwardClient:
             tcp_pipeline.connect(self.server_addr)
             pkg = recv_from_pipeline(tcp_pipeline)
             if not pkg:
-                raise Exception(
-                    f'The service has been shut down: {self.server_addr}')
+                raise Exception(f'The service has been shut down: {self.server_addr}')
             send_to_pipeline(
                 tcp_pipeline,
                 EMPTY_ADDR,
@@ -262,15 +245,13 @@ class UDPForwardClient:
                 EMPTY_ADDR,
                 json.dumps(conf).encode(),
             )
-            self.log.info(
-                f'Successfully connected to server:{self.server_addr}')
+            self.log.info(f'Successfully connected to server:{self.server_addr}')
             self.distribute_data(
                 pipeline=tcp_pipeline,
                 timeout=timeout,
             )
         except Exception as e:
-            self.log.error(
-                f'Exception connecting to server, caused by {e.__class__}:{e}')
+            self.log.error(f'Exception connecting to server, caused by {e.__class__}:{e}')
             tcp_pipeline.close()
         pass
 
@@ -341,8 +322,7 @@ class UDPForwardClient:
         except socket.timeout:
             self.log.warn(f'{client_name} has timed out')
         except Exception as e:
-            self.log.error(
-                f'{client_name} has been shut down due to {e.__class__}:{e}')
+            self.log.error(f'{client_name} has been shut down due to {e.__class__}:{e}')
         finally:
             with self._lock:
                 self.udp_client_pool.pop(remote_addr, None)

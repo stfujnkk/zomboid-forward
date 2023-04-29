@@ -148,13 +148,12 @@ def decrypt_token(token: bytes, factors: bytes):
 def init_log(log_file: str = None, log_level: str = None):
     handlers = []
     if log_file:
-        handlers.append(
-            RotatingFileHandler(
-                maxBytes=1024 * 1024,
-                backupCount=8,
-                filename=log_file,
-                encoding=ENCODEING,
-            ))
+        handlers.append(RotatingFileHandler(
+            maxBytes=1024 * 1024,
+            backupCount=8,
+            filename=log_file,
+            encoding=ENCODEING,
+        ))
     else:
         handlers.append(logging.StreamHandler())
     if log_level:

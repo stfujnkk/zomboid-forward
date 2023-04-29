@@ -4,6 +4,7 @@ from zomboid_forward.selectors.libs import (
     OutputStream,
     SocketStatus,
     ForwardStream,
+    ClosedError,
 )
 from zomboid_forward.utils import (
     unpack_addr,
@@ -15,11 +16,9 @@ import socket
 import selectors
 import typing
 from zomboid_forward.config import (
-    # MAX_PACKAGE_SIZE,
-    # TIME_OUT,
-    # ENCODEING,
-    # EMPTY_ADDR,
-    Addr, )
+    TIME_OUT,
+    Addr,
+)
 
 
 class ForwardClient(BaseTCPClient):
@@ -69,7 +68,10 @@ class ForwardClient(BaseTCPClient):
             socket_status = self.clients[remote_addr]
 
             local_addr = self._remote2local[remote_port]
-            socket_status.output.write((pkg[8:], local_addr))
+            try:
+                socket_status.output.write((pkg[8:], local_addr))
+            except ClosedError:
+                pass
 
         pass
 
@@ -78,13 +80,16 @@ class ForwardClient(BaseTCPClient):
             socket.AF_INET,
             socket.SOCK_DGRAM,
         )
-        udp_client.settimeout(300)
-        return self._dispatcher.register(
+        udp_client.setblocking(False)
+        socket_status = self._dispatcher.register(
             udp_client,
             selectors.EVENT_READ | selectors.EVENT_WRITE,
             {'remote_addr': remote_addr},
             input_stream=ForwardStream(self.push_data),
+            timeout=TIME_OUT,
         )
+        socket_status.close_hook = lambda: self.clients.pop(remote_addr, None)
+        return socket_status
 
     def push_data(self, pkg, ctx: dict = None):
         data, local_addr = pkg

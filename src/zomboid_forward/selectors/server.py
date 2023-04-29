@@ -72,9 +72,8 @@ class ForwardServer(BaseTCPServer):
             server,
             selectors.EVENT_READ | selectors.EVENT_WRITE,
             {'remote_port': port},
-            input_stream=ForwardStream(
-                lambda pkg, ctx: self.pull_data(output_stream, pkg, ctx),
-            ),
+            input_stream=ForwardStream(lambda pkg, ctx: self.pull_data(output_stream, pkg, ctx),
+                                       ),
         )
 
     def pull_data(
