@@ -11,7 +11,7 @@ LOG_LEVEL = {
     None: logging.INFO,
 }
 BASE_PATH = os.path.join(os.path.expanduser('~'), '.zomboid_forward')
-ENCODEING = 'UTF8'
+ENCODING = 'UTF8'
 MAX_PACKAGE_SIZE = 0x7fff
 IP_HEAD_SIZE = 4
 PORT_HEAD_SIZE = 2

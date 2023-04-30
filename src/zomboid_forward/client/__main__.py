@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*
 
-from zomboid_forward.libs import UDPForwardClient
+from zomboid_forward.selectors.client import ForwardClient
 from zomboid_forward.utils import init_log, load_config, get_absolute_path
 from zomboid_forward import __version__
 import os
@@ -9,7 +9,7 @@ import os
 
 def main(config_path, timeout: float = None, level: str = None):
     config = load_config(config_path)
-    client = UDPForwardClient(config)
+    client = ForwardClient(config)
     init_log(
         config['common'].get('log_file'),
         level or config['common'].get('log_level'),

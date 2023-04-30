@@ -8,7 +8,7 @@ import logging
 import time
 import threading
 from zomboid_forward.config import MAX_PACKAGE_SIZE, BUFFER_SIZE, Addr
-import traceback
+from zomboid_forward.utils import get_stack_info
 
 
 class ClosedError(Exception):
@@ -28,10 +28,10 @@ class Pipeline(Queue):
             self.not_full.notify_all()
 
     def _qsize(self) -> int:
-        l = super()._qsize()
-        if l == 0 and self._closed:
+        size = super()._qsize()
+        if size == 0 and self._closed:
             raise ClosedError('The pipeline has been closed')
-        return l
+        return size
 
     def _put(self, item):
         if self._closed:
@@ -213,7 +213,7 @@ class Dispatcher:
             if mask & selectors.EVENT_WRITE:
                 self.start_write_thread(key)
         except Exception as e:
-            stack_info = ''.join(traceback.format_exception(type(e), e))
+            stack_info = ''.join(get_stack_info(e))
             self.log.error(f'Error occurred during dispatch\n{stack_info}')
             self.start_close_thread(key, e)
         pass
@@ -274,7 +274,7 @@ class Dispatcher:
             socket_status._is_writing = True
             self._executor.submit(_write_thread)
         except ClosedError:
-            # At this point, all data has been sent and the connection is being released
+            # At this point, all data has been sent
             self.start_close_thread(key)
 
     @classmethod
@@ -324,13 +324,13 @@ class Dispatcher:
 
     @classmethod
     def unpack(cls, data: bytes) -> typing.Tuple[bytes, int, bool]:
-        L = len(data)
-        if L < 2:
+        data_len = len(data)
+        if data_len < 2:
             return b'', 0, False
-        l = struct.unpack('!H', data[:2])[0]
-        if L < 2 + l:
+        pkg_len = struct.unpack('!H', data[:2])[0]
+        if data_len < 2 + pkg_len:
             return b'', 0, False
-        return data[2:2 + l], 2 + l, l != MAX_PACKAGE_SIZE
+        return data[2:2 + pkg_len], 2 + pkg_len, pkg_len != MAX_PACKAGE_SIZE
 
     @classmethod
     def pack(cls, data: bytes) -> bytes:
@@ -356,8 +356,9 @@ class BaseTCPServer:
 
     def start_service_thread(self):
         connection, address = self._server_socket.accept()
-        connection.setblocking(False)
+        self.log.info(f'Successfully connected to client:{address}')
 
+        connection.setblocking(False)
         connection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         # 35s~305s
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 35)
@@ -368,7 +369,7 @@ class BaseTCPServer:
         socket_status = self._dispatcher.register(
             connection,
             events,
-            data={},
+            data={'address': address},
         )
 
         def _handle_connection():
@@ -376,10 +377,11 @@ class BaseTCPServer:
                 self.handle_connection(
                     socket_status.input,
                     socket_status.output,
+                    socket_status.data,
                 )
                 socket_status.close()
             except Exception as e:
-                stack_info = ''.join(traceback.format_exception(type(e), e))
+                stack_info = ''.join(get_stack_info(e))
                 msg = f"Forced shutdown of client with address {address}, caused by {e.__class__}:{e}"
                 self.log.error(f"{msg}\n{stack_info}")
                 socket_status.close(e)
@@ -391,6 +393,7 @@ class BaseTCPServer:
         self,
         input_stream: InputStream,
         output_stream: OutputStream,
+        context,
     ):
         raise NotImplementedError()
 
@@ -405,6 +408,8 @@ class BaseTCPServer:
         self._server_socket.setblocking(False)
         self._server_socket.bind(self.server_addr)
         self._server_socket.listen()
+        self.log.info('Waiting for client connection...')
+        self.log.info(f'Listening for {self.server_addr}')
 
         self._selector = selector = selectors.DefaultSelector()
         self._executor = executor = ThreadPoolExecutor()
@@ -430,7 +435,7 @@ class BaseTCPServer:
             dispatcher.close()
         except (Exception, KeyboardInterrupt) as e:
             if isinstance(e, Exception):
-                stack_info = ''.join(traceback.format_exception(type(e), e))
+                stack_info = ''.join(get_stack_info(e))
                 self.log.error(f'Error occurred running server\n{stack_info}')
             self._closed = True
             dispatcher.close(e)
@@ -451,6 +456,7 @@ class BaseTCPClient:
         self._closed = False
 
     def connect(self):
+        self.log.info(f'Attempting to connect {self.server_addr}')
         self._closed = False
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock = self._sock
@@ -485,11 +491,15 @@ class BaseTCPClient:
             self._closed = True
             dispatcher.close()
         except (Exception, KeyboardInterrupt) as e:
-            if isinstance(e, Exception):
-                stack_info = ''.join(traceback.format_exception(type(e), e))
-                self.log.error(f'Error occurred running client\n{stack_info}')
             self._closed = True
             dispatcher.close(e)
+            if isinstance(e, OSError):
+                if e.errno == 10022:
+                    self.log.error(f'Connection to the service has closed:{self.server_addr}')
+                    return
+            if isinstance(e, Exception):
+                stack_info = ''.join(get_stack_info(e))
+                self.log.error(f'Error occurred running client\n{stack_info}')
 
     def handle_connection(
         self,

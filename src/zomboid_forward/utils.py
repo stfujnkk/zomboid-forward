@@ -19,10 +19,11 @@ from zomboid_forward.config import (
     PKG,
     LOG_FORMAT,
     LOG_LEVEL,
-    ENCODEING,
+    ENCODING,
     BASE_PATH,
 )
 import threading
+import traceback
 
 _socket_state: typing.Dict[socket.socket, dict] = weakref.WeakKeyDictionary()
 _lock_for_socket_state = threading.Lock()
@@ -152,7 +153,7 @@ def init_log(log_file: str = None, log_level: str = None):
             maxBytes=1024 * 1024,
             backupCount=8,
             filename=log_file,
-            encoding=ENCODEING,
+            encoding=ENCODING,
         ))
     else:
         handlers.append(logging.StreamHandler())
@@ -179,7 +180,7 @@ def load_config(filename: str):
         raise ValueError(f'File does not exist:{config_path}')
     base_path = os.path.dirname(config_path)
     config = configparser.ConfigParser()
-    config.read(config_path, encoding=ENCODEING)
+    config.read(config_path, encoding=ENCODING)
     conf = {s: dict(config.items(s)) for s in config.sections()}
 
     if 'log_file' in conf['common']:
@@ -188,3 +189,7 @@ def load_config(filename: str):
             base_path,
         )
     return conf
+
+
+def get_stack_info(e: BaseException):
+    return traceback.format_exception(None, e, e.__traceback__)

@@ -8,7 +8,9 @@ from zomboid_forward.selectors.libs import (
 from zomboid_forward.utils import (
     unpack_addr,
     pack_addr,
+    encrypt_token,
 )
+from zomboid_forward.config import ENCODING
 import selectors
 import struct
 import json
@@ -24,11 +26,28 @@ class ForwardServer(BaseTCPServer):
             port=int(conf['common']['bind_port']),
         )
 
+        self._token: bytes = conf['common']['token'].strip().encode(ENCODING)
+        del conf['common']['token']
+        self._conf = conf
+        pass
+
     def handle_connection(
         self,
         input_stream: InputStream,
         output_stream: OutputStream,
+        context: dict,
     ):
+        address = context['address']
+        t, f1, f2 = encrypt_token(self._token)
+        output_stream.write(f1 + f2)
+        t2 = input_stream.read(timeout=1)
+        if t2 != t:
+            self.log.info(f'Client token verification failed:{address}')
+            output_stream.write(b'ko')
+            return
+        self.log.info(f'Client token verification successful:{address}')
+        output_stream.write(b'ok')
+
         pkg = input_stream.read()
         client_config: dict = json.loads(pkg)
         port_mapping: typing.Dict[int, SocketStatus] = {}
@@ -72,8 +91,7 @@ class ForwardServer(BaseTCPServer):
             server,
             selectors.EVENT_READ | selectors.EVENT_WRITE,
             {'remote_port': port},
-            input_stream=ForwardStream(lambda pkg, ctx: self.pull_data(output_stream, pkg, ctx),
-                                       ),
+            input_stream=ForwardStream(lambda pkg, ctx: self.pull_data(output_stream, pkg, ctx)),
         )
 
     def pull_data(

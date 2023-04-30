@@ -7,7 +7,7 @@ import typing
 from zomboid_forward.config import (
     MAX_PACKAGE_SIZE,
     TIME_OUT,
-    ENCODEING,
+    ENCODING,
     EMPTY_ADDR,
     Addr,
 )
@@ -28,7 +28,7 @@ class UDPForwardServer:
             conf['common']['bind_addr'],
             int(conf['common']['bind_port']),
         )
-        self._token: bytes = conf['common']['token'].strip().encode(ENCODEING)
+        self._token: bytes = conf['common']['token'].strip().encode(ENCODING)
         del conf['common']['token']
 
     def pull_data(
@@ -219,7 +219,7 @@ class UDPForwardClient:
 
             pass
         self._lock = threading.RLock()
-        self._token: bytes = conf['common']['token'].strip().encode(ENCODEING)
+        self._token: bytes = conf['common']['token'].strip().encode(ENCODING)
         del conf['common']['token']
         self.stop = False
 
