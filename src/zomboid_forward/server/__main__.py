@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*
 
-from zomboid_forward.selectors.server import ForwardServer
+from zomboid_forward.selectors.server import ZomboidForwardServer
 from zomboid_forward.utils import init_log, load_config, get_absolute_path
 from zomboid_forward import __version__
 import os
@@ -9,7 +9,7 @@ import os
 
 def main(config_path, level: str = None):
     config = load_config(config_path)
-    server = ForwardServer(config)
+    server = ZomboidForwardServer(config)
     init_log(
         config['common'].get('log_file'),
         level or config['common'].get('log_level'),

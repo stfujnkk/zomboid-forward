@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*
 
-from zomboid_forward.selectors.client import ForwardClient
+from zomboid_forward.selectors.client import ZomboidForwardClient
 from zomboid_forward.utils import init_log, load_config, get_absolute_path
 from zomboid_forward import __version__
 import os
@@ -9,12 +9,12 @@ import os
 
 def main(config_path, timeout: float = None, level: str = None):
     config = load_config(config_path)
-    client = ForwardClient(config)
+    client = ZomboidForwardClient(config, timeout or 3)
     init_log(
         config['common'].get('log_file'),
         level or config['common'].get('log_level'),
     )
-    client.connect(timeout=timeout)
+    client.connect()
 
 
 if __name__ == '__main__':
