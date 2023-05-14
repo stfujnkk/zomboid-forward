@@ -39,8 +39,7 @@ def init_log(log_file: str = None, log_level: str = None):
             filename=log_file,
             encoding=ENCODING,
         ))
-    else:
-        handlers.append(logging.StreamHandler())
+    handlers.append(logging.StreamHandler())
     if log_level:
         log_level = log_level.lower()
     logging.basicConfig(
