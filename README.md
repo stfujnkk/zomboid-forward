@@ -89,6 +89,7 @@ Lightweight UDP forwarding service that can be used for forwarding [Project Zomb
   log_level = debug
   token = 12345678
   [ProjectZomboid]
+  ; type = udp
   local_ip = 127.0.0.1
   local_port = 16261,16262
   remote_port = 16261,16262
