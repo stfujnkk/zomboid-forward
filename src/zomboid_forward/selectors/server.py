@@ -51,7 +51,7 @@ class ForwardTCPServerEndpoint(ForwardServer):
 
     def notify_read(self) -> None:
         sock, addr = self._sock.accept()
-        logging.warning(f'New TCP connection {self.server_addr}<==>{addr}')
+        logging.info(f'New TCP connection {self.server_addr}<==>{addr}')
         sock.setblocking(False)
         init_tcp_keep_alive_opt(sock)
 
@@ -65,6 +65,9 @@ class ForwardTCPServerEndpoint(ForwardServer):
             self.transit(addr, b'', PortType.TCP)
             return
         client = self._clients[addr]
+        if data == b'':
+            client.close()
+            return
         client.buffer.append(data)
 
 
@@ -73,15 +76,18 @@ class ForwardTCPClientEndpoint(ClientEndpoint['ForwardTCPServerEndpoint'], Stepp
     def notify_read(self) -> None:
         data = self._sock.recv(BUFFER_SIZE)
         if data == b'':
-            logging.warning(f'TCP client closed {self._addr}')
-            self._server.transit(self._addr, b'', PortType.TCP)
-            self._server.unregister_client(self._addr)
             self.close()
             return
         self._server.transit(self._addr, data, PortType.TCP)
 
     def notify_write(self) -> None:
         next(self._stepping_sender)
+
+    def close(self) -> None:
+        logging.info(f'TCP client closed {self._addr}')
+        self._server.transit(self._addr, b'', PortType.TCP)
+        self._server.unregister_client(self._addr)
+        return super().close()
 
     pass
 
@@ -101,7 +107,7 @@ class ForwardUDPServerEndpoint(ForwardServer, SteppingSenderMixin):
             data, addr = self._sock.recvfrom(BUFFER_SIZE)
             self.transit(addr, data, PortType.UDP)
         except ConnectionResetError:  # [WinError 10054]
-            logging.warning(f'UDP client closed {self._latest_address}')
+            logging.info(f'UDP client closed {self._latest_address}')
             # Notify to close
             self.transit(self._latest_address, b'', PortType.UDP)
 
@@ -135,7 +141,6 @@ class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSend
     def __init__(self, server, sock, addr, **kwargs) -> None:
         super().__init__(server=server, sock=sock, addr=addr, **kwargs)
         self._port_mapping: dict[tuple[int, int], 'ForwardServer'] = {}
-        self._state = 0
 
     def notify_write(self) -> None:
         if self._state == 0:
@@ -248,11 +253,13 @@ class ZomboidForwardServer(ServerEndpoint):
                 events = self._selector.select(0.5)
                 for key, mask in events:
                     endpoint: Endpoint = key.data
+                    if endpoint._closed:
+                        continue
                     try:
-                        if mask & selectors.EVENT_READ:
-                            endpoint.notify_read()
                         if mask & selectors.EVENT_WRITE:
                             endpoint.notify_write()
+                        if mask & selectors.EVENT_READ:
+                            endpoint.notify_read()
                     except Exception as e:
                         logging.error(endpoint._sock, exc_info=e)
                         endpoint.close()

@@ -47,6 +47,7 @@ def init_tcp_keep_alive_opt(sock: socket.socket):
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 35)
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 30)
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 10)
+    pass
 
 
 class Endpoint(abc.ABC):
@@ -55,6 +56,9 @@ class Endpoint(abc.ABC):
         self.buffer = deque()
         self._sock = sock
         self._selector = selector
+        self._state = 0
+        self._closed = False
+        # self._read_closed = False
 
     @abc.abstractmethod
     def notify_read(self) -> None:
@@ -74,6 +78,9 @@ class Endpoint(abc.ABC):
         """
         Close endpoint related resources.
         """
+        if self._closed:
+            return
+        self._closed = True
         self._selector.unregister(self._sock)
         self._sock.close()
 
@@ -112,7 +119,8 @@ class ServerEndpoint(Endpoint):
         raise NotImplementedError()
 
     def close(self) -> None:
-        for client in self._clients.values():
+        clients = set(self._clients.values())
+        for client in clients:
             client.close()
         super().close()
 
@@ -120,7 +128,7 @@ class ServerEndpoint(Endpoint):
         self._clients[client._addr] = client
 
     def unregister_client(self, addr: 'socket._RetAddress'):
-        del self._clients[addr]
+        self._clients.pop(addr, None)
 
     pass
 

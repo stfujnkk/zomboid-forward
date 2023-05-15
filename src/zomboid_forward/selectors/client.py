@@ -45,8 +45,6 @@ class SteppingConnectMixin(ServerEndpoint):
                     self._connected = True
                 else:
                     raise
-            if self._connected:
-                logging.info(f'Successfully connected to server {self.server_addr}')
             while self._connected:
                 yield True
             if time.time() > deadline:
@@ -94,12 +92,22 @@ class VirtualTCPClient(VirtualClient, SteppingConnectMixin, SteppingSenderMixin)
 
     def notify_read(self) -> None:
         data = self._sock.recv(BUFFER_SIZE)
+        if data == b'':
+            self.close()
+            return
         self.transit(data, self.server_addr)
 
     def notify_write(self) -> None:
         if not next(self._stepping_connect):
             return
+        if self._state == 0:
+            self._state = 1
+            logging.info(f'Successfully connected to server {self._addr}<==>{self.server_addr}')
         next(self._stepping_sender)
+
+    def close(self) -> None:
+        self._server.unregister_client((PortType.TCP, self._addr))
+        return super(ServerEndpoint, self).close()
 
 
 class VirtualUDPClient(VirtualClient, SteppingSenderMixin):
@@ -124,6 +132,10 @@ class VirtualUDPClient(VirtualClient, SteppingSenderMixin):
         sock.setblocking(False)
         return sock
 
+    def close(self) -> None:
+        self._server.unregister_client((PortType.UDP, self._addr))
+        return super().close()
+
 
 class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, SteppingSenderMixin):
     upstream: dict[PortType, Type[VirtualClient]] = {
@@ -134,7 +146,6 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
     def __init__(self, conf: dict, timeout: float) -> None:
         host = conf['common']['server_addr'].strip()
         port = int(conf['common']['server_port'])
-        self._state = 0
 
         super().__init__(selector=selectors.DefaultSelector(), port=port, host=host, timeout=timeout)
         self._remote2local: dict[tuple[PortType, int], 'socket._RetAddress'] = {}
@@ -183,6 +194,9 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
             return
         if self._state < 1:
             return
+        if self._state == 1:
+            logging.info(f'Successfully connected to server {self.server_addr}')
+            self._state = 2
         next(self._stepping_sender)
 
     def connect(self):
@@ -194,21 +208,29 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
                 for key, mask in events:
                     endpoint: Endpoint = key.data
                     try:
-                        if mask & selectors.EVENT_READ:
-                            endpoint.notify_read()
+                        if endpoint._closed:
+                            continue
                         if mask & selectors.EVENT_WRITE:
                             endpoint.notify_write()
+                        if mask & selectors.EVENT_READ:
+                            endpoint.notify_read()
                     except Exception as e:
-                        logging.error(endpoint._sock, exc_info=e)
+                        addr = getattr(endpoint, '_addr')
+                        logging.error(f"{endpoint._sock} {addr}", exc_info=e)
                         endpoint.close()
         finally:
+            self.close()
             self._selector.close()
 
     def unregister_client(self, client_id: tuple[PortType, 'socket._RetAddress']):
-        port_type, remote_addr = client_id
-        logging.warning(f'Close {PortType(port_type).name} connection {remote_addr}')
-        self._clients[client_id].close()
+        if client_id not in self._clients:
+            return
+        client: VirtualClient = self._clients[client_id]
         del self._clients[client_id]
+        port_type, remote_addr = client_id
+        logging.info(f'Close {PortType(port_type).name} connection {remote_addr}')
+        client.transit(b'', client.server_addr)
+        client.close()
 
     def _forward_to_client(self, port_type: PortType, remote_addr: 'socket._RetAddress', port: int, data: bytes):
         client_id = (port_type, remote_addr)
