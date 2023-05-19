@@ -219,7 +219,8 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
                         if mask & selectors.EVENT_WRITE:
                             endpoint.notify_write()
                         if mask & selectors.EVENT_READ:
-                            endpoint.notify_read()
+                            if not endpoint._read_closed:
+                                endpoint.notify_read()
                     except Exception as e:
                         addr = getattr(endpoint, '_addr')
                         logging.error(f"{endpoint._sock} {addr}", exc_info=e)
