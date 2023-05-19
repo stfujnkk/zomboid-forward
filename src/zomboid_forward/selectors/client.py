@@ -16,7 +16,7 @@ import selectors
 import logging
 import struct
 import time
-from typing import Type
+from typing import Type, Dict, Tuple
 import json
 from zomboid_forward.utils import decrypt_token
 
@@ -138,18 +138,18 @@ class VirtualUDPClient(VirtualClient, SteppingSenderMixin):
 
 
 class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, SteppingSenderMixin):
-    upstream: dict[PortType, Type[VirtualClient]] = {
+    upstream: Dict[PortType, Type[VirtualClient]] = {
         PortType.TCP: VirtualTCPClient,
         PortType.UDP: VirtualUDPClient,
     }
 
-    def __init__(self, conf: dict, timeout: float) -> None:
+    def __init__(self, conf: Dict, timeout: float) -> None:
         host = conf['common']['server_addr'].strip()
         port = int(conf['common']['server_port'])
 
         super().__init__(selector=selectors.DefaultSelector(), port=port, host=host, timeout=timeout)
-        self._remote2local: dict[tuple[PortType, int], 'socket._RetAddress'] = {}
-        self._local2remote: dict['socket._RetAddress', tuple[PortType, int]] = {}
+        self._remote2local: Dict[Tuple[PortType, int], 'socket._RetAddress'] = {}
+        self._local2remote: Dict['socket._RetAddress', Tuple[PortType, int]] = {}
 
         for k, v in conf.items():
             if k == 'common' or k == 'DEFAULT':
@@ -222,7 +222,7 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
             self.close()
             self._selector.close()
 
-    def unregister_client(self, client_id: tuple[PortType, 'socket._RetAddress']):
+    def unregister_client(self, client_id: Tuple[PortType, 'socket._RetAddress']):
         if client_id not in self._clients:
             return
         client: VirtualClient = self._clients[client_id]
@@ -254,5 +254,5 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
     def _pack_for_send(self, data: bytes):
         return pack(data)
 
-    def _unpack_for_receive(self, data: bytes) -> tuple[bytes, int, bool]:
+    def _unpack_for_receive(self, data: bytes) -> Tuple[bytes, int, bool]:
         return unpack(data)

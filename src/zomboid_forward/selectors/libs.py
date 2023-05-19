@@ -2,7 +2,7 @@ from collections import deque
 import socket
 import abc
 import struct
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Tuple, Dict, List
 import selectors
 from enum import IntEnum
 
@@ -31,7 +31,7 @@ def pack(data: bytes):
     return pkg
 
 
-def unpack(data: bytes) -> tuple[bytes, int, bool]:
+def unpack(data: bytes) -> Tuple[bytes, int, bool]:
     data_len = len(data)
     if data_len < 2:
         return b'', 0, False
@@ -104,7 +104,7 @@ class ServerEndpoint(Endpoint):
 
     def __init__(self, selector: 'selectors.BaseSelector', port: int, host: str = '0.0.0.0', **kwargs) -> None:
         self.server_addr = (host, port)
-        self._clients: dict['socket._RetAddress', 'ClientEndpoint'] = {}
+        self._clients: Dict['socket._RetAddress', 'ClientEndpoint'] = {}
         super().__init__(sock=self._init_sock(), selector=selector, **kwargs)
 
     def _init_sock(self) -> socket:
@@ -139,7 +139,7 @@ class SteppingReceiverMixin(Endpoint):
         super().__init__(sock=sock, selector=selector, **kwargs)
         self._stepping_receiver = self._create_receiver()
 
-    def _unpack_for_receive(self, data: bytes) -> tuple[bytes, int, bool]:
+    def _unpack_for_receive(self, data: bytes) -> Tuple[bytes, int, bool]:
         return data, len(data), True
 
     def _create_receiver(self):
@@ -149,7 +149,7 @@ class SteppingReceiverMixin(Endpoint):
             data = self._sock.recv(BUFFER_SIZE)
             if not data:
                 break
-            pkgs: list[bytes] = []
+            pkgs: List[bytes] = []
             data_buf += data
             while True:
                 pkg, length, is_finish = self._unpack_for_receive(data_buf)

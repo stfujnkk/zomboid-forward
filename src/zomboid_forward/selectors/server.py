@@ -1,7 +1,7 @@
 import socket
 import abc
 import struct
-from typing import Type
+from typing import Type, Dict, Tuple
 import selectors
 import json
 import logging
@@ -133,14 +133,14 @@ class ForwardUDPServerEndpoint(ForwardServer, SteppingSenderMixin):
 
 class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSenderMixin, SteppingReceiverMixin):
 
-    downstream_services: dict[PortType, Type[ForwardServer]] = {
+    downstream_services: Dict[PortType, Type[ForwardServer]] = {
         PortType.TCP: ForwardTCPServerEndpoint,
         PortType.UDP: ForwardUDPServerEndpoint,
     }
 
     def __init__(self, server, sock, addr, **kwargs) -> None:
         super().__init__(server=server, sock=sock, addr=addr, **kwargs)
-        self._port_mapping: dict[tuple[int, int], 'ForwardServer'] = {}
+        self._port_mapping: Dict[Tuple[int, int], 'ForwardServer'] = {}
 
     def notify_write(self) -> None:
         if self._state == 0:
@@ -184,7 +184,7 @@ class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSend
             self._server._used_ports.remove(s.server_addr[1])
         super().close()
 
-    def _init_forward_server(self, client_config: dict):
+    def _init_forward_server(self, client_config: Dict):
         ports = set[int]()
         for k, v in client_config.items():
             if k == 'common' or k == 'DEFAULT':
@@ -220,7 +220,7 @@ class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSend
     def _pack_for_send(self, data: bytes):
         return pack(data)
 
-    def _unpack_for_receive(self, data: bytes) -> tuple[bytes, int, bool]:
+    def _unpack_for_receive(self, data: bytes) -> Tuple[bytes, int, bool]:
         return unpack(data)
 
     pass
@@ -228,7 +228,7 @@ class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSend
 
 class ZomboidForwardServer(ServerEndpoint):
 
-    def __init__(self, conf: dict) -> None:
+    def __init__(self, conf: Dict) -> None:
         super().__init__(selector=selectors.DefaultSelector(), port=int(conf['common']['bind_port']), host=conf['common']['bind_addr'])
         self._used_ports = set[int]()
         self._token: bytes = conf['common']['token'].strip().encode()
