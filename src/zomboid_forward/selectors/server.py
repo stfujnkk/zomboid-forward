@@ -66,7 +66,8 @@ class ForwardTCPServerEndpoint(ForwardServer):
             return
         client = self._clients[addr]
         if data == b'':
-            client.close()
+            # client.close()
+            client._read_closed = True
             return
         client.buffer.append(data)
 
@@ -76,7 +77,8 @@ class ForwardTCPClientEndpoint(ClientEndpoint['ForwardTCPServerEndpoint'], Stepp
     def notify_read(self) -> None:
         data = self._sock.recv(BUFFER_SIZE)
         if data == b'':
-            self.close()
+            self._read_closed = True
+            # self.close()
             return
         self._server.transit(self._addr, data, PortType.TCP)
 
@@ -127,8 +129,13 @@ class ForwardUDPServerEndpoint(ForwardServer, SteppingSenderMixin):
         self.buffer.append((data, addr))
 
     def _send_to(self, data):
+        # 65507
         self._latest_address = data[1]
-        return self._sock.sendto(*data)
+        send_len = self._sock.sendto(*data)
+        data = (data[0][send_len:], data[1])
+        if data[0]:
+            return data
+        return False
 
 
 class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSenderMixin, SteppingReceiverMixin):
@@ -155,24 +162,26 @@ class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSend
             return
 
         pkgs = next(self._stepping_receiver)
+
         if len(pkgs) == 0:
             return
-
         if self._state == 1:
             pkg = pkgs.pop(0)
             if self._token != pkg:
                 raise Exception('VERIFICATION FAILED')
             self._state = 2
 
-        if self._state == 2 and pkgs:
+        if len(pkgs) == 0:
+            return
+        if self._state == 2:
             conf = json.loads(pkgs.pop(0))
             self._init_forward_server(conf)
             for s in self._port_mapping.values():
                 s.register_server(self._selector)
             self._state = 3
 
-        if self._state < 3:
-            return
+        # if self._state < 3:
+        #     return
 
         for pkg in pkgs:
             port_type = struct.unpack('!H', pkg[:2])[0]

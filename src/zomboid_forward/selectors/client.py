@@ -93,7 +93,8 @@ class VirtualTCPClient(VirtualClient, SteppingConnectMixin, SteppingSenderMixin)
     def notify_read(self) -> None:
         data = self._sock.recv(BUFFER_SIZE)
         if data == b'':
-            self.close()
+            # self.close()
+            self._read_closed = True
             return
         self.transit(data, self.server_addr)
 
@@ -123,8 +124,13 @@ class VirtualUDPClient(VirtualClient, SteppingSenderMixin):
         self.buffer.append((data, addr))
 
     def _send_to(self, data):
+        # 65507
         self._latest_address = data[1]
-        return self._sock.sendto(*data)
+        send_len = self._sock.sendto(*data)
+        data = (data[0][send_len:], data[1])
+        if data[0]:
+            return data
+        return False
 
     def _init_sock(self) -> socket:
         self.server_addr = None
@@ -235,7 +241,10 @@ class ZomboidForwardClient(SteppingConnectMixin, SteppingReceiverMixin, Stepping
     def _forward_to_client(self, port_type: PortType, remote_addr: 'socket._RetAddress', port: int, data: bytes):
         client_id = (port_type, remote_addr)
         if data == b'':
-            self.unregister_client(client_id)
+            # self.unregister_client(client_id)
+            if client_id not in self._clients:
+                return
+            self._clients[client_id]._read_closed = True
             return
         if client_id not in self._clients:
             self._init_virtual_client(port_type, remote_addr, port)

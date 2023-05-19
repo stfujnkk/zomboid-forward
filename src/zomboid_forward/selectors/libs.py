@@ -58,7 +58,7 @@ class Endpoint(abc.ABC):
         self._selector = selector
         self._state = 0
         self._closed = False
-        # self._read_closed = False
+        self._read_closed = False
 
     @abc.abstractmethod
     def notify_read(self) -> None:
@@ -178,11 +178,15 @@ class SteppingSenderMixin(Endpoint):
                 data = self.buffer.popleft()
                 data = self._pack_for_send(data)
                 while data:
-                    sended_len = self._send_to(data)
-                    data = data[sended_len:]
+                    data = self._send_to(data)
                     yield
             except IndexError:
+                if self._read_closed:
+                    # check again
+                    if len(self.buffer) == 0:
+                        self.close()
                 yield
 
     def _send_to(self, data):
-        return self._sock.send(data)
+        sended_len = self._sock.send(data)
+        return data[sended_len:]
