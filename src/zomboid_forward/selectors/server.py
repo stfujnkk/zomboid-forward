@@ -185,7 +185,7 @@ class TransitClientEndpoint(ClientEndpoint['ZomboidForwardServer'], SteppingSend
         super().close()
 
     def _init_forward_server(self, client_config: Dict):
-        ports = set[int]()
+        ports = set()
         for k, v in client_config.items():
             if k == 'common' or k == 'DEFAULT':
                 continue
@@ -230,7 +230,7 @@ class ZomboidForwardServer(ServerEndpoint):
 
     def __init__(self, conf: Dict) -> None:
         super().__init__(selector=selectors.DefaultSelector(), port=int(conf['common']['bind_port']), host=conf['common']['bind_addr'])
-        self._used_ports = set[int]()
+        self._used_ports = set()
         self._token: bytes = conf['common']['token'].strip().encode()
         del conf['common']['token']
 
