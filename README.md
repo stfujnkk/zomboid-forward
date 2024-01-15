@@ -1,6 +1,11 @@
 # Zomboid-Forward
 Lightweight forwarding service that can be used for forwarding [Project Zomboid](https://pzwiki.net/wiki/Main_Page) game servers
 
+## NOTE
+
+新项目地址 ：https://github.com/stfujnkk/pzrp
+New project address : https://github.com/stfujnkk/pzrp
+
 ## Start server
 
 - Install
